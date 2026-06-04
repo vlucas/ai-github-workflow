@@ -21,3 +21,60 @@ The SQLite database file is created at `data/todo.db`.
 - `pnpm db:generate` — generate a new migration after schema changes
 - `pnpm db:studio` — open Drizzle Studio
 - `pnpm build` — production build
+
+## JIRA → Claude → PR automation
+
+`.github/workflows/jira-to-pr.yml` is a webhook-triggered workflow that takes a
+JIRA ticket, hands the description to a Claude Code agent to implement, and opens
+a pull request with the result.
+
+Trigger it via GitHub's `repository_dispatch` webhook (e.g. from a JIRA automation
+rule):
+
+```bash
+curl -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer <GITHUB_TOKEN_WITH_REPO_SCOPE>" \
+  https://api.github.com/repos/vlucas/ai-github-workflow/dispatches \
+  -d '{"event_type":"jira-ticket","client_payload":{"key":"PROJ-123"}}'
+```
+
+If only `key` is provided, the workflow fetches the summary and description from
+the JIRA REST API. You can also pass `summary` and `description` directly in the
+payload, or run it manually from the Actions tab (`workflow_dispatch`).
+
+Required repository secrets:
+
+- `ANTHROPIC_API_KEY` — Anthropic API key for Claude Code
+- `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — only needed when fetching
+  ticket details from JIRA
+
+### Customising the agent's context
+
+`.github/claude-context.md` is prepended to the prompt on every run. Edit it to
+give the agent durable, project-specific context and instructions (conventions,
+where things live, hard rules) without touching any scripts.
+
+### Post-work checks
+
+After the agent finishes, `.github/scripts/verify.sh` runs typecheck, lint,
+tests, and build. Each check only runs if the project supports it (e.g. lint is
+skipped until an ESLint config exists, tests until a `test` script exists), so it
+stays correct as the project grows. The results are added to the PR description
+and the Actions job summary; if any check fails the PR is still opened (for human
+review) but the workflow run is marked failed.
+
+### Maintaining the workflow
+
+Each step's logic lives in its own script under `.github/scripts/`, so they can
+be linted and run locally:
+
+| Script | Purpose |
+| --- | --- |
+| `resolve-ticket.sh` | Read payload / fetch ticket details from JIRA |
+| `create-branch.sh` | Create the working branch |
+| `run-claude.sh` | Prepend context and run the Claude Code agent |
+| `verify.sh` | Run typecheck / lint / tests / build |
+| `check-changes.sh` | Detect whether the agent changed anything |
+| `commit-and-push.sh` | Commit and push the branch |
+| `open-pr.sh` | Open the pull request with the verification report |
