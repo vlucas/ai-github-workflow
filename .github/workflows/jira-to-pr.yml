@@ -174,6 +174,7 @@ jobs:
         run: .github/scripts/verify.sh
 
       - name: Open pull request
+        id: pr
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -186,6 +187,16 @@ jobs:
           VERIFY_PASSED: ${{ steps.verify.outputs.passed }}
           USAGE_REPORT: ${{ runner.temp }}/claude-usage.md
         run: .github/scripts/open-pr.sh
+
+      - name: Comment PR link on ticket
+        if: steps.diff.outputs.changed == 'true' && steps.pr.outputs.url != ''
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          TICKET_KEY: ${{ steps.ticket.outputs.key }}
+          COMMENT: "Claude Code opened a pull request for this ticket: ${{ steps.pr.outputs.url }}"
+        run: .github/scripts/jira-comment.sh
 
       - name: Mark ticket Dev Review
         if: steps.diff.outputs.changed == 'true'

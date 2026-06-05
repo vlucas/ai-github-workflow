@@ -102,3 +102,4 @@ be linted and run locally:
 | `check-changes.sh` | Detect whether the agent changed anything |
 | `commit-and-push.sh` | Commit and push the branch |
 | `open-pr.sh` | Open the pull request with the verification report |
+| `jira-comment.sh` | Comment on the ticket with the new PR link |

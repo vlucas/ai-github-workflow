@@ -10,6 +10,8 @@
 #   VERIFY_REPORT                    - optional path to the verification report
 #   VERIFY_PASSED                    - optional "true"/"false" check result
 #   USAGE_REPORT                     - optional path to the token/cost report
+#
+# Writes (step output): url - the URL of the created pull request
 set -euo pipefail
 
 JIRA_LINK=""
@@ -44,8 +46,14 @@ ${TICKET_DESCRIPTION}${VERIFY_SECTION}${USAGE_SECTION}
 ---
 🤖 Generated from a JIRA webhook. Please review before merging."
 
-gh pr create \
+# gh pr create prints the new PR's URL on stdout; capture it for later steps.
+PR_URL=$(gh pr create \
   --base "${GITHUB_REF_NAME}" \
   --head "$BRANCH" \
   --title "${TICKET_KEY}: ${TICKET_SUMMARY}" \
-  --body "$BODY"
+  --body "$BODY")
+
+echo "Opened PR: $PR_URL"
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+fi
