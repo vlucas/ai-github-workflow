@@ -91,7 +91,7 @@ export function TodoApp({
     }
   }
 
-  const backgroundColor = getConfigValue(`backgroundColor`)
+  const backgroundColor = getConfigValue(`backgroundColor`) ?? `#f5f5dc`
   const titleColor = getComplementaryColor(backgroundColor)
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
