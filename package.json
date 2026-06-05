@@ -2,6 +2,7 @@
   "name": "todo-app",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@11.5.1",
   "dependencies": {
     "@tanstack/query-core": "^5.90.20",
     "@tanstack/query-db-collection": "^1.0.38",

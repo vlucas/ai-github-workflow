@@ -31,14 +31,17 @@ ${CONTEXT}
 You are working in this repository to implement a JIRA ticket.
 
 Ticket: ${TICKET_KEY}
-Summary: ${TICKET_SUMMARY}
+Title: ${TICKET_SUMMARY}
 
 Description:
 ${TICKET_DESCRIPTION}
 
-Implement the change described above, following the project context and
-conventions stated above. Keep the change focused and minimal, and do NOT run
-git or open a pull request — just edit the working tree.
+Use BOTH the title and the description above to understand what needs to be
+fixed — the title states the goal and the description provides the detail. If the
+description is empty or sparse, rely on the title. Then implement the change,
+following the project context and conventions stated above. Keep the change
+focused and minimal, and do NOT run git or open a pull request — just edit the
+working tree.
 EOF
 )
 

@@ -44,9 +44,15 @@ if [ -z "$SUMMARY" ] || [ -z "$DESCRIPTION" ]; then
   rm -f issue.json
 fi
 
-if [ -z "$DESCRIPTION" ]; then
-  echo "::error::Ticket $KEY has no description to work from."
+# The agent uses the title and the description together for context. Require at
+# least one of them; a strong title alone is enough to proceed.
+if [ -z "$SUMMARY" ] && [ -z "$DESCRIPTION" ]; then
+  echo "::error::Ticket $KEY has neither a title nor a description to work from."
   exit 1
+fi
+
+if [ -z "$DESCRIPTION" ]; then
+  echo "::warning::Ticket $KEY has no description; proceeding with the title only."
 fi
 
 # Slugged branch name, unique per run.

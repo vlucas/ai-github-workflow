@@ -46,8 +46,24 @@ payload, or run it manually from the Actions tab (`workflow_dispatch`).
 Required repository secrets:
 
 - `ANTHROPIC_API_KEY` — Anthropic API key for Claude Code
-- `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — only needed when fetching
-  ticket details from JIRA
+- `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — used to read the ticket,
+  check its status, and transition it
+
+### Ticket status flow
+
+The workflow keeps the JIRA ticket's status in sync with the work:
+
+1. **Guard** — a run only proceeds if the ticket is currently in
+   **Selected for Development**. This is the loop-prevention mechanism: because
+   the workflow itself changes the ticket's status, any re-triggered dispatch
+   sees a different status and skips instead of looping.
+2. **In Progress** — set when implementation begins.
+3. **Dev Review** — set once a PR is opened.
+
+The status names are configurable at the top of the workflow
+(`REQUIRED_STATUS`, `IN_PROGRESS_STATUS`, `DONE_STATUS`). Status transitions are
+best-effort — if JIRA can't be updated the run logs a warning but still produces
+the PR. For manual runs you can tick the `force` input to bypass the guard.
 
 ### Customising the agent's context
 
@@ -71,7 +87,9 @@ be linted and run locally:
 
 | Script | Purpose |
 | --- | --- |
+| `jira-status.sh` | Loop-prevention guard: proceed only if the ticket is in the required status |
 | `resolve-ticket.sh` | Read payload / fetch ticket details from JIRA |
+| `jira-transition.sh` | Move the ticket to a target status by name |
 | `create-branch.sh` | Create the working branch |
 | `run-claude.sh` | Prepend context and run the Claude Code agent |
 | `verify.sh` | Run typecheck / lint / tests / build |

@@ -17,14 +17,21 @@ name: JIRA → Claude → PR
 #           }
 #         }'
 #
+# Status flow:
+#   - Work only starts when the ticket is in REQUIRED_STATUS
+#     ("Selected for Development"). This guard prevents the workflow from
+#     re-triggering itself in a loop when it changes the ticket's status.
+#   - When work begins the ticket is moved to IN_PROGRESS_STATUS ("In Progress").
+#   - When a PR is opened the ticket is moved to DONE_STATUS ("Dev Review").
+#
 # If only "key" is supplied, the workflow fetches the summary and description
 # from the JIRA REST API using the JIRA_* secrets below.
 #
 # Required repository secrets:
 #   ANTHROPIC_API_KEY  - Anthropic API key for Claude Code
-#   JIRA_BASE_URL      - e.g. https://your-org.atlassian.net   (only needed for JIRA fetch)
-#   JIRA_EMAIL         - Atlassian account email               (only needed for JIRA fetch)
-#   JIRA_API_TOKEN     - Atlassian API token                   (only needed for JIRA fetch)
+#   JIRA_BASE_URL      - e.g. https://your-org.atlassian.net
+#   JIRA_EMAIL         - Atlassian account email
+#   JIRA_API_TOKEN     - Atlassian API token
 
 on:
   repository_dispatch:
@@ -43,18 +50,53 @@ on:
         description: "Ticket description (optional, fetched from JIRA if blank)"
         required: false
         type: string
+      force:
+        description: "Bypass the status guard (for manual testing)"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
-  # One run per ticket; a newer dispatch for the same ticket cancels the older one.
+  # One run per ticket. cancel-in-progress is false on purpose: the workflow
+  # changes the ticket's status, which can re-trigger a dispatch for the same
+  # ticket — we must not cancel an in-flight implementation. The duplicate run
+  # is harmless, as the status guard makes it skip.
   group: jira-to-pr-${{ github.event.client_payload.key || inputs.key }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
   pull-requests: write
 
+env:
+  REQUIRED_STATUS: "Selected for Development"
+  IN_PROGRESS_STATUS: "In Progress"
+  DONE_STATUS: "Dev Review"
+
 jobs:
+  # Loop-prevention gate: only proceed when the ticket is in REQUIRED_STATUS.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Guard on ticket status
+        id: guard
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          TICKET_KEY: ${{ github.event.client_payload.key || inputs.key }}
+          REQUIRED_STATUS: ${{ env.REQUIRED_STATUS }}
+          FORCE: ${{ inputs.force }}
+        run: .github/scripts/jira-status.sh
+
   implement:
+    needs: guard
+    if: needs.guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -62,6 +104,15 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Mark ticket In Progress
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          TICKET_KEY: ${{ github.event.client_payload.key || inputs.key }}
+          TARGET_STATUS: ${{ env.IN_PROGRESS_STATUS }}
+        run: .github/scripts/jira-transition.sh
 
       - name: Resolve ticket details
         id: ticket
@@ -133,6 +184,16 @@ jobs:
           VERIFY_REPORT: ${{ runner.temp }}/verify-report.md
           VERIFY_PASSED: ${{ steps.verify.outputs.passed }}
         run: .github/scripts/open-pr.sh
+
+      - name: Mark ticket Dev Review
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          TICKET_KEY: ${{ steps.ticket.outputs.key }}
+          TARGET_STATUS: ${{ env.DONE_STATUS }}
+        run: .github/scripts/jira-transition.sh
 
       - name: Fail run if checks failed
         if: steps.diff.outputs.changed == 'true' && steps.verify.outputs.passed != 'true'
