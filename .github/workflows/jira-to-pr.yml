@@ -148,6 +148,7 @@ jobs:
           TICKET_KEY: ${{ steps.ticket.outputs.key }}
           TICKET_SUMMARY: ${{ steps.ticket.outputs.summary }}
           TICKET_DESCRIPTION: ${{ steps.ticket.outputs.description }}
+          USAGE_REPORT: ${{ runner.temp }}/claude-usage.md
         run: .github/scripts/run-claude.sh
 
       - name: Check for changes
@@ -183,6 +184,7 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           VERIFY_REPORT: ${{ runner.temp }}/verify-report.md
           VERIFY_PASSED: ${{ steps.verify.outputs.passed }}
+          USAGE_REPORT: ${{ runner.temp }}/claude-usage.md
         run: .github/scripts/open-pr.sh
 
       - name: Mark ticket Dev Review

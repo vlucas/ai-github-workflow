@@ -9,6 +9,7 @@
 #   JIRA_BASE_URL                    - optional, used to link back to the ticket
 #   VERIFY_REPORT                    - optional path to the verification report
 #   VERIFY_PASSED                    - optional "true"/"false" check result
+#   USAGE_REPORT                     - optional path to the token/cost report
 set -euo pipefail
 
 JIRA_LINK=""
@@ -29,10 +30,16 @@ if [ -n "${VERIFY_REPORT:-}" ] && [ -f "$VERIFY_REPORT" ]; then
   VERIFY_SECTION=$'\n\n---\n\n'"$(cat "$VERIFY_REPORT")"
 fi
 
+# Token usage and cost report, if the agent step produced one.
+USAGE_SECTION=""
+if [ -n "${USAGE_REPORT:-}" ] && [ -f "$USAGE_REPORT" ]; then
+  USAGE_SECTION=$'\n\n---\n\n'"$(cat "$USAGE_REPORT")"
+fi
+
 BODY="${JIRA_LINK}${STATUS_LINE}Automated implementation of **${TICKET_KEY}** by Claude Code.
 
 ## Ticket
-${TICKET_DESCRIPTION}${VERIFY_SECTION}
+${TICKET_DESCRIPTION}${VERIFY_SECTION}${USAGE_SECTION}
 
 ---
 🤖 Generated from a JIRA webhook. Please review before merging."

@@ -65,6 +65,12 @@ The status names are configurable at the top of the workflow
 best-effort — if JIRA can't be updated the run logs a warning but still produces
 the PR. For manual runs you can tick the `force` input to bypass the guard.
 
+### Token usage and cost reporting
+
+The agent runs with Claude Code's JSON output, so each run captures its token
+counts (input/output/cache) and dollar cost. The figures are added to the PR
+description and the Actions job summary.
+
 ### Customising the agent's context
 
 `.github/claude-context.md` is prepended to the prompt on every run. Edit it to
@@ -91,7 +97,7 @@ be linted and run locally:
 | `resolve-ticket.sh` | Read payload / fetch ticket details from JIRA |
 | `jira-transition.sh` | Move the ticket to a target status by name |
 | `create-branch.sh` | Create the working branch |
-| `run-claude.sh` | Prepend context and run the Claude Code agent |
+| `run-claude.sh` | Prepend context, run the Claude Code agent, capture token usage and cost |
 | `verify.sh` | Run typecheck / lint / tests / build |
 | `check-changes.sh` | Detect whether the agent changed anything |
 | `commit-and-push.sh` | Commit and push the branch |
