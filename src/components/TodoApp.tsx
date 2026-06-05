@@ -9,8 +9,8 @@ import { getComplementaryColor } from '@/lib/color'
 interface TodoAppProps {
   todos: Array<SelectTodo>
   configData: Array<SelectConfig>
-  todoCollection: Collection<SelectTodo>
-  configCollection: Collection<SelectConfig>
+  todoCollection: Collection<SelectTodo, number>
+  configCollection: Collection<SelectConfig, number>
   title: string
   configMutationFn?: (params: { transaction: Transaction }) => Promise<void>
 }
@@ -29,6 +29,26 @@ export function TodoApp({
   // Waits for 2500ms of inactivity before persisting - only the final value is saved
   const mutateConfig = configMutationFn
     ? usePacedMutations({
+        // Apply the optimistic update immediately; persistence is debounced.
+        onMutate: ({ key, value }: { key: string; value: string }) => {
+          for (const config of configData) {
+            if (config.key === key) {
+              configCollection.update(config.id, (draft) => {
+                draft.value = value
+              })
+              return
+            }
+          }
+
+          // If the config doesn't exist yet, create it
+          configCollection.insert({
+            id: Math.round(Math.random() * 1000000),
+            key,
+            value,
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+        },
         mutationFn: configMutationFn,
         strategy: debounceStrategy({ wait: 2500 }),
       })
@@ -48,25 +68,7 @@ export function TodoApp({
   const setConfigValue = (key: string, value: string): void => {
     if (mutateConfig) {
       // Use paced mutations for updates (optimistic + batched persistence)
-      mutateConfig(() => {
-        for (const config of configData) {
-          if (config.key === key) {
-            configCollection.update(config.id, (draft) => {
-              draft.value = value
-            })
-            return
-          }
-        }
-
-        // If the config doesn't exist yet, create it
-        configCollection.insert({
-          id: Math.round(Math.random() * 1000000),
-          key,
-          value,
-          created_at: new Date(),
-          updated_at: new Date(),
-        })
-      })
+      mutateConfig({ key, value })
     } else {
       // Use naked collection calls (collection handlers will be invoked)
       for (const config of configData) {

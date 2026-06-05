@@ -43,7 +43,8 @@
     "db:studio": "drizzle-kit studio",
     "dev": "vite dev",
     "lint": "eslint . --fix",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "type": "module"
 }

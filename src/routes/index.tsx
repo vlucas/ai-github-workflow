@@ -1,4 +1,3 @@
-import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { configCollection, todoCollection } from '../lib/collections'
@@ -48,7 +47,7 @@ function HomePage() {
         if (!(`id` in mutation.original)) {
           throw new Error(`Original config not found for update`)
         }
-        await api.config.update(mutation.original.id, mutation.changes)
+        await api.config.update(mutation.original.id as number, mutation.changes)
       }),
     )
 
